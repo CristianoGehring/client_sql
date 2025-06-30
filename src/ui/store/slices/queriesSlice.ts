@@ -1,6 +1,29 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { QueryResult, QueryHistory } from '@/shared/types';
 
+// Função para serializar dados (converter Date para string)
+const serializeData = (data: any): any => {
+  if (data === null || data === undefined) return data;
+  
+  if (data instanceof Date) {
+    return data.toISOString();
+  }
+  
+  if (Array.isArray(data)) {
+    return data.map(serializeData);
+  }
+  
+  if (typeof data === 'object') {
+    const serialized: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      serialized[key] = serializeData(value);
+    }
+    return serialized;
+  }
+  
+  return data;
+};
+
 interface QueryTab {
   id: string;
   title: string;
@@ -37,7 +60,21 @@ export const executeQuery = createAsyncThunk(
     if (!result.success) {
       throw new Error(result.error);
     }
-    return result.result;
+    
+    // Serializar os dados antes de retornar
+    if (result.result) {
+      const serializedResult = {
+        ...result.result,
+        rows: result.result.rows.map((row: any) => serializeData(row)),
+        columns: result.result.columns || [],
+        rowCount: result.result.rowCount || 0,
+        executionTime: result.result.executionTime || 0
+      };
+      
+      return serializedResult;
+    }
+    
+    throw new Error('Resultado vazio da query');
   }
 );
 

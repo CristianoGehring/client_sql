@@ -18,7 +18,8 @@ export const store = configureStore({
         ignoredPaths: [
           'connections.connections.createdAt',
           'connections.connections.updatedAt',
-          'queries.history.timestamp'
+          'queries.history.timestamp',
+          'queries.tabs.result.rows'
         ],
       },
     }),
