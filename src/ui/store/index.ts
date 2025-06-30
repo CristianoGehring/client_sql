@@ -15,6 +15,11 @@ export const store = configureStore({
     getDefaultMiddleware({
       serializableCheck: {
         ignoredActions: ['persist/PERSIST'],
+        ignoredPaths: [
+          'connections.connections.createdAt',
+          'connections.connections.updatedAt',
+          'queries.history.timestamp'
+        ],
       },
     }),
 });

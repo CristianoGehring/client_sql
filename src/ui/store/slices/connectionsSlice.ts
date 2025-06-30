@@ -102,6 +102,7 @@ const connectionsSlice = createSlice({
       })
       .addCase(createConnection.fulfilled, (state, action) => {
         state.loading = false;
+        state.connections.push(action.payload);
         state.activeConnection = action.payload;
       })
       .addCase(createConnection.rejected, (state, action) => {

@@ -176,10 +176,12 @@ ipcMain.handle('database:disconnect', async () => {
   }
 });
 
-ipcMain.handle('database:execute-query', async (event: IpcMainInvokeEvent, query: string, params?: any[]) => {
+ipcMain.handle('database:execute-query', async (event: IpcMainInvokeEvent, query: string, connectionId: string, params?: any[]) => {
   try {
-    // TODO: Implementar gerenciamento de conexões ativas
-    const driver = DatabaseDriverFactory.createDriver(DatabaseType.MYSQL); // Temporário
+    const driver = activeConnections.get(connectionId);
+    if (!driver) {
+      throw new Error(`Conexão ${connectionId} não encontrada ou não está ativa`);
+    }
     const result = await driver.executeQuery(query, params);
     return { success: true, result };
   } catch (error) {

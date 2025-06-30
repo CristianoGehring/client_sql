@@ -13,6 +13,7 @@ const Toolbar: React.FC = () => {
       id: string;
       title: string;
       query: string;
+      connectionId: string | null;
       loading: boolean;
     }>;
     loading: boolean;
@@ -23,8 +24,11 @@ const Toolbar: React.FC = () => {
   const activeTab = tabs.find((tab: any) => tab.id === activeTabId);
 
   const handleExecuteQuery = () => {
-    if (activeTab && activeTab.query.trim()) {
-      dispatch(executeQuery({ query: activeTab.query }));
+    if (activeTab && activeTab.query.trim() && activeTab.connectionId) {
+      dispatch(executeQuery({ 
+        query: activeTab.query, 
+        connectionId: activeTab.connectionId 
+      }));
     }
   };
 

@@ -5,6 +5,7 @@ interface QueryTab {
   id: string;
   title: string;
   query: string;
+  connectionId: string | null; // ID da conexão selecionada
   result?: QueryResult;
   loading: boolean;
   error?: string;
@@ -31,8 +32,8 @@ const initialState: QueriesState = {
 // Async thunks
 export const executeQuery = createAsyncThunk(
   'queries/executeQuery',
-  async ({ query, params }: { query: string; params?: any[] }) => {
-    const result = await window.electronAPI.executeQuery(query, params);
+  async ({ query, connectionId, params }: { query: string; connectionId: string; params?: any[] }) => {
+    const result = await window.electronAPI.executeQuery(query, connectionId, params);
     if (!result.success) {
       throw new Error(result.error);
     }
@@ -49,6 +50,7 @@ const queriesSlice = createSlice({
         id: action.payload.id || `tab-${Date.now()}`,
         title: action.payload.title || 'Nova Query',
         query: action.payload.query || '',
+        connectionId: action.payload.connectionId || null,
         loading: false,
       };
       state.tabs.push(newTab);
@@ -75,7 +77,13 @@ const queriesSlice = createSlice({
         tab.title = action.payload.title;
       }
     },
-    clearTabResult: (state, action: PayloadAction<string>) => {
+    updateTabConnection: (state, action: PayloadAction<{ tabId: string; connectionId: string | null }>) => {
+      const tab = state.tabs.find(t => t.id === action.payload.tabId);
+      if (tab) {
+        tab.connectionId = action.payload.connectionId;
+      }
+    },
+    clearTabResult: (state, action: PayloadAction<{ tabId: string }>) => {
       const tab = state.tabs.find(t => t.id === action.payload.tabId);
       if (tab) {
         tab.result = undefined;
@@ -119,16 +127,16 @@ const queriesSlice = createSlice({
       .addCase(executeQuery.fulfilled, (state, action) => {
         state.loading = false;
         const activeTab = state.tabs.find(tab => tab.id === state.activeTabId);
-        if (activeTab) {
+        if (activeTab && action.payload) {
           activeTab.loading = false;
           activeTab.result = action.payload;
           // Adicionar ao histórico
           state.history.unshift({
             id: `history-${Date.now()}`,
             query: activeTab.query,
-            connectionId: '', // TODO: Adicionar connectionId
+            connectionId: activeTab.connectionId || '',
             executionTime: action.payload.executionTime,
-            timestamp: new Date(),
+            timestamp: new Date().toISOString(),
             success: true,
           });
         }
@@ -151,6 +159,7 @@ export const {
   setActiveTab,
   updateTabQuery,
   updateTabTitle,
+  updateTabConnection,
   clearTabResult,
   addToHistory,
   addToFavorites,

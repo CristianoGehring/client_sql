@@ -9,8 +9,8 @@ export interface DatabaseConnection {
   username: string;
   password: string;
   ssl: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export enum DatabaseType {
@@ -34,7 +34,7 @@ export interface QueryHistory {
   query: string;
   connectionId: string;
   executionTime: number;
-  timestamp: Date;
+  timestamp: string;
   success: boolean;
   error?: string;
 }

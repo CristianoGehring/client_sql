@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
-import { setActiveConnection, addConnection, testConnection, clearError } from '../store/slices/connectionsSlice';
+import { setActiveConnection, addConnection, testConnection, clearError, createConnection } from '../store/slices/connectionsSlice';
 import { addTab } from '../store/slices/queriesSlice';
 import { DatabaseConnection, QueryHistory, DatabaseType } from '@/shared/types';
 import { Database, History, Star, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -28,7 +28,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const handleHistoryClick = (historyItem: QueryHistory) => {
     dispatch(addTab({ 
       query: historyItem.query,
-      title: `Query ${new Date(historyItem.timestamp).toLocaleTimeString()}`
+      title: `Query ${new Date(historyItem.timestamp).toLocaleTimeString()}`,
+      connectionId: historyItem.connectionId || activeConnection?.id || null,
     }));
   };
 
@@ -41,8 +42,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     setShowSettingsModal(true);
   };
 
-  const handleCreateConnection = (connectionData: Partial<DatabaseConnection>) => {
-    const now = new Date();
+  const handleCreateConnection = async (connectionData: Partial<DatabaseConnection>) => {
+    const now = new Date().toISOString();
     const newConnection: DatabaseConnection = {
       id: `conn_${Date.now()}`,
       name: connectionData.name || 'Nova Conexão',
@@ -57,8 +58,13 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       updatedAt: now,
     };
     
-    dispatch(addConnection(newConnection));
-    setShowNewConnectionModal(false);
+    try {
+      await dispatch(createConnection(newConnection));
+      setShowNewConnectionModal(false);
+    } catch (error) {
+      console.error('Erro ao criar conexão:', error);
+      // O erro será capturado pelo Redux e exibido automaticamente
+    }
   };
 
   const handleTestConnection = async (connectionData: Partial<DatabaseConnection>) => {
@@ -74,8 +80,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       username: connectionData.username || '',
       password: connectionData.password || '',
       ssl: connectionData.ssl || false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     console.log('📡 Componente: Dados da conexão para teste:', testConnectionData);
