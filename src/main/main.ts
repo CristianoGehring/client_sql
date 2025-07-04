@@ -5,6 +5,7 @@ import * as http from 'http';
 import { DatabaseDriverFactory } from '../core/factories/DatabaseDriverFactory';
 import { MySQLDriver } from '../drivers/mysql/MySQLDriver';
 import { DatabaseConnection, QueryResult, DatabaseType } from '../shared/types';
+import { connectionDB } from './database';
 
 // Registrar drivers
 DatabaseDriverFactory.registerDriver(DatabaseType.MYSQL, MySQLDriver);
@@ -258,11 +259,26 @@ const activeConnections = new Map<string, any>();
 
 ipcMain.handle('connection:create', async (event: IpcMainInvokeEvent, connection: DatabaseConnection) => {
   try {
+    // Verificar se a conexão já está ativa
+    if (activeConnections.has(connection.id)) {
+      console.log(`Conexão ${connection.id} já está ativa`);
+      return { success: true };
+    }
+
+    console.log(`Criando nova conexão ativa: ${connection.id}`);
     const driver = DatabaseDriverFactory.createDriver(connection.type);
     await driver.connect(connection);
     activeConnections.set(connection.id, driver);
+    
+    // Salvar conexão no SQLite apenas se não existir
+    const existingConnection = connectionDB.getConnectionById(connection.id);
+    if (!existingConnection) {
+      connectionDB.saveConnection(connection);
+    }
+    
     return { success: true };
   } catch (error) {
+    console.error(`Erro ao criar conexão ${connection.id}:`, error);
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Erro desconhecido' 
@@ -277,6 +293,119 @@ ipcMain.handle('connection:close', async (event: IpcMainInvokeEvent, connectionI
       await driver.disconnect();
       activeConnections.delete(connectionId);
     }
+    return { success: true };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Erro desconhecido' 
+    };
+  }
+});
+
+// Novos handlers para persistência
+ipcMain.handle('connection:save', async (event: IpcMainInvokeEvent, connection: DatabaseConnection) => {
+  try {
+    connectionDB.saveConnection(connection);
+    return { success: true };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Erro desconhecido' 
+    };
+  }
+});
+
+ipcMain.handle('connection:loadAll', async () => {
+  try {
+    // Limpar duplicatas antes de carregar
+    connectionDB.cleanDuplicates();
+    const connections = connectionDB.getAllConnections();
+    return { success: true, connections };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Erro desconhecido' 
+    };
+  }
+});
+
+ipcMain.handle('connection:loadById', async (event: IpcMainInvokeEvent, id: string) => {
+  try {
+    const connection = connectionDB.getConnectionById(id);
+    return { success: true, connection };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Erro desconhecido' 
+    };
+  }
+});
+
+ipcMain.handle('connection:update', async (event: IpcMainInvokeEvent, connection: DatabaseConnection) => {
+  try {
+    connectionDB.updateConnection(connection);
+    return { success: true };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Erro desconhecido' 
+    };
+  }
+});
+
+ipcMain.handle('connection:delete', async (event: IpcMainInvokeEvent, id: string) => {
+  try {
+    connectionDB.deleteConnection(id);
+    return { success: true };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Erro desconhecido' 
+    };
+  }
+});
+
+ipcMain.handle('connection:getCount', async () => {
+  try {
+    const count = connectionDB.getConnectionCount();
+    return { success: true, count };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Erro desconhecido' 
+    };
+  }
+});
+
+ipcMain.handle('connection:isActive', async (event: IpcMainInvokeEvent, connectionId: string) => {
+  try {
+    const isActive = activeConnections.has(connectionId);
+    return { success: true, isActive };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Erro desconhecido' 
+    };
+  }
+});
+
+// Handler para limpar banco (apenas desenvolvimento)
+ipcMain.handle('connection:clearAll', async () => {
+  try {
+    connectionDB.deleteAllConnections();
+    return { success: true };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Erro desconhecido' 
+    };
+  }
+});
+
+// Handler para limpar duplicatas manualmente
+ipcMain.handle('connection:cleanDuplicates', async () => {
+  try {
+    connectionDB.cleanDuplicates();
     return { success: true };
   } catch (error) {
     return { 

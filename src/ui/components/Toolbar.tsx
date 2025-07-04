@@ -4,6 +4,7 @@ import { RootState, AppDispatch } from '../store';
 import { executeQuery } from '../store/slices/queriesSlice';
 import { addTab } from '../store/slices/queriesSlice';
 import { Play, Plus, Save, FolderOpen, Settings } from 'lucide-react';
+import { createConnection } from '../store/slices/connectionsSlice';
 
 const Toolbar: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -19,21 +20,51 @@ const Toolbar: React.FC = () => {
     loading: boolean;
   };
   const { activeTabId, tabs, loading } = queriesState;
+  const { connections, activeConnection } = useSelector((state: RootState) => state.connections);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const activeTab = tabs.find((tab: any) => tab.id === activeTabId);
 
-  const handleExecuteQuery = () => {
+  const handleExecuteQuery = async () => {
     if (activeTab && activeTab.query.trim() && activeTab.connectionId) {
-      dispatch(executeQuery({ 
-        query: activeTab.query, 
-        connectionId: activeTab.connectionId 
-      }));
+      try {
+        // Verificar se a conexão está ativa no backend
+        const isActiveResult = await window.electronAPI.isConnectionActive(activeTab.connectionId);
+        
+        if (!isActiveResult.success) {
+          console.error('Erro ao verificar status da conexão');
+          return;
+        }
+        
+        if (!isActiveResult.isActive) {
+          console.log(`Conexão ${activeTab.connectionId} não está ativa, ativando...`);
+          // Encontrar a conexão e ativá-la
+          const connection = connections.find(conn => conn.id === activeTab.connectionId);
+          if (connection) {
+            await dispatch(createConnection(connection));
+          } else {
+            console.error('Conexão não encontrada');
+            return;
+          }
+        }
+        
+        dispatch(executeQuery({ 
+          query: activeTab.query, 
+          connectionId: activeTab.connectionId 
+        }));
+      } catch (error) {
+        console.error('Erro ao executar query:', error);
+      }
     }
   };
 
   const handleNewQuery = () => {
-    dispatch(addTab({}));
+    // Garantir que sempre há uma conexão ativa para novas abas
+    const connectionId = activeConnection?.id || (connections.length > 0 ? connections[0].id : null);
+    
+    dispatch(addTab({
+      connectionId: connectionId,
+    }));
   };
 
   const handleOpenFile = async () => {

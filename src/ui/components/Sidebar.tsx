@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
-import { setActiveConnection, addConnection, testConnection, clearError, createConnection } from '../store/slices/connectionsSlice';
-import { addTab } from '../store/slices/queriesSlice';
+import { setActiveConnection, addConnection, testConnection, clearError, createConnection, saveConnectionToDB, deleteConnectionFromDB } from '../store/slices/connectionsSlice';
+import { addTab, updateTabConnection } from '../store/slices/queriesSlice';
 import { DatabaseConnection, QueryHistory, DatabaseType } from '@/shared/types';
 import { Database, History, Star, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -16,13 +16,47 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const queriesState = useSelector((state: RootState) => state.queries) as {
     history: QueryHistory[];
     favorites: string[];
+    tabs: Array<{
+      id: string;
+      title: string;
+      query: string;
+      connectionId: string | null;
+      loading: boolean;
+    }>;
+    activeTabId: string | null;
   };
-  const { history, favorites } = queriesState;
+  const { history, favorites, tabs, activeTabId } = queriesState;
+  const activeTab = tabs.find(tab => tab.id === activeTabId);
   const [showNewConnectionModal, setShowNewConnectionModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
-  const handleConnectionClick = (connection: DatabaseConnection) => {
-    dispatch(setActiveConnection(connection));
+  const handleConnectionClick = async (connection: DatabaseConnection) => {
+    try {
+      // Verificar se a conexão já está ativa no backend
+      const isActiveResult = await window.electronAPI.isConnectionActive(connection.id);
+      
+      if (!isActiveResult.success) {
+        throw new Error('Erro ao verificar status da conexão');
+      }
+      
+      if (!isActiveResult.isActive) {
+        console.log(`Ativando conexão ${connection.id}...`);
+        // Criar a conexão ativa no backend
+        await dispatch(createConnection(connection));
+      } else {
+        console.log(`Conexão ${connection.id} já está ativa`);
+      }
+      
+      // Definir como ativa no frontend
+      dispatch(setActiveConnection(connection));
+      
+      // Atualizar a aba ativa se ela não tiver uma conexão definida
+      if (activeTab && !activeTab.connectionId) {
+        dispatch(updateTabConnection({ tabId: activeTab.id, connectionId: connection.id }));
+      }
+    } catch (error) {
+      console.error('Erro ao ativar conexão:', error);
+    }
   };
 
   const handleHistoryClick = (historyItem: QueryHistory) => {
@@ -42,10 +76,20 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     setShowSettingsModal(true);
   };
 
+  const handleDeleteConnection = async (connectionId: string) => {
+    if (confirm('Tem certeza que deseja deletar esta conexão?')) {
+      try {
+        await dispatch(deleteConnectionFromDB(connectionId));
+      } catch (error) {
+        console.error('Erro ao deletar conexão:', error);
+      }
+    }
+  };
+
   const handleCreateConnection = async (connectionData: Partial<DatabaseConnection>) => {
     const now = new Date().toISOString();
     const newConnection: DatabaseConnection = {
-      id: `conn_${Date.now()}`,
+      id: `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: connectionData.name || 'Nova Conexão',
       type: connectionData.type || DatabaseType.MYSQL,
       host: connectionData.host || 'localhost',
@@ -59,7 +103,9 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     };
     
     try {
+      // Criar conexão e salvar no SQLite
       await dispatch(createConnection(newConnection));
+      await dispatch(saveConnectionToDB(newConnection));
       setShowNewConnectionModal(false);
     } catch (error) {
       console.error('Erro ao criar conexão:', error);
@@ -71,7 +117,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     console.log('🧪 Componente: Iniciando teste de conexão', connectionData);
     
     const testConnectionData: DatabaseConnection = {
-      id: 'temp_test',
+      id: `temp_test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: connectionData.name || 'Teste',
       type: connectionData.type || DatabaseType.MYSQL,
       host: connectionData.host || 'localhost',
@@ -138,17 +184,31 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           </h3>
           <div className="space-y-1">
             {connections.map((connection) => (
-              <button
+              <div
                 key={connection.id}
-                onClick={() => handleConnectionClick(connection)}
-                className={`w-full text-left px-2 py-1 rounded text-sm ${
+                className={`flex items-center justify-between px-2 py-1 rounded text-sm ${
                   activeConnection?.id === connection.id
                     ? 'bg-blue-600 text-white'
                     : 'text-gray-300 hover:bg-gray-700'
                 }`}
               >
-                {connection.name}
-              </button>
+                <button
+                  onClick={() => handleConnectionClick(connection)}
+                  className="flex-1 text-left truncate"
+                >
+                  {connection.name}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteConnection(connection.id);
+                  }}
+                  className="ml-2 text-red-400 hover:text-red-300 text-xs"
+                  title="Deletar conexão"
+                >
+                  ×
+                </button>
+              </div>
             ))}
             <button 
               onClick={handleNewConnection}
@@ -419,11 +479,32 @@ const NewConnectionForm: React.FC<{
 
 // Componente para configurações
 const SettingsForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const handleCleanDuplicates = async () => {
+    try {
+      await window.electronAPI.cleanDuplicates();
+      console.log('✅ Duplicatas limpas com sucesso');
+      // Recarregar conexões
+      window.location.reload();
+    } catch (error) {
+      console.error('❌ Erro ao limpar duplicatas:', error);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div>
         <h4 className="text-md font-medium text-white mb-2">Configurações Gerais</h4>
         <p className="text-sm text-gray-400">Configurações em desenvolvimento...</p>
+      </div>
+      
+      <div>
+        <h4 className="text-md font-medium text-white mb-2">Manutenção</h4>
+        <button
+          onClick={handleCleanDuplicates}
+          className="btn btn-secondary text-sm"
+        >
+          Limpar Duplicatas
+        </button>
       </div>
       
       <div className="flex justify-end">

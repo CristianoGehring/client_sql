@@ -2,7 +2,7 @@ import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
 import { setActiveTab, removeTab, updateTabQuery, executeQuery, addTab, updateTabConnection } from '../store/slices/queriesSlice';
-import { setActiveConnection } from '../store/slices/connectionsSlice';
+import { setActiveConnection, createConnection } from '../store/slices/connectionsSlice';
 import { X, Plus, Database } from 'lucide-react';
 
 const QueryEditor: React.FC = () => {
@@ -33,10 +33,13 @@ const QueryEditor: React.FC = () => {
   };
 
   const handleNewTab = () => {
+    // Garantir que sempre há uma conexão ativa para novas abas
+    const connectionId = activeConnection?.id || (connections.length > 0 ? connections[0].id : null);
+    
     dispatch(addTab({
       title: 'Nova Query',
       query: '',
-      connectionId: activeConnection?.id || null,
+      connectionId: connectionId,
     }));
   };
 
@@ -53,14 +56,38 @@ const QueryEditor: React.FC = () => {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = async (e: React.KeyboardEvent) => {
     if (e.ctrlKey && e.key === 'Enter') {
       e.preventDefault();
       if (activeTab && activeTab.query.trim() && activeTab.connectionId) {
-        dispatch(executeQuery({ 
-          query: activeTab.query, 
-          connectionId: activeTab.connectionId 
-        }));
+        try {
+          // Verificar se a conexão está ativa no backend
+          const isActiveResult = await window.electronAPI.isConnectionActive(activeTab.connectionId);
+          
+          if (!isActiveResult.success) {
+            console.error('Erro ao verificar status da conexão');
+            return;
+          }
+          
+          if (!isActiveResult.isActive) {
+            console.log(`Conexão ${activeTab.connectionId} não está ativa, ativando...`);
+            // Encontrar a conexão e ativá-la
+            const connection = connections.find(conn => conn.id === activeTab.connectionId);
+            if (connection) {
+              await dispatch(createConnection(connection));
+            } else {
+              console.error('Conexão não encontrada');
+              return;
+            }
+          }
+          
+          dispatch(executeQuery({ 
+            query: activeTab.query, 
+            connectionId: activeTab.connectionId 
+          }));
+        } catch (error) {
+          console.error('Erro ao executar query:', error);
+        }
       }
     }
   };

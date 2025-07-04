@@ -26,6 +26,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeConnection: (connectionId: string) => 
     ipcRenderer.invoke('connection:close', connectionId),
   
+  // Connection persistence
+  saveConnection: (connection: DatabaseConnection) => 
+    ipcRenderer.invoke('connection:save', connection),
+  
+  loadAllConnections: () => 
+    ipcRenderer.invoke('connection:loadAll'),
+  
+  loadConnectionById: (id: string) => 
+    ipcRenderer.invoke('connection:loadById', id),
+  
+  updateConnection: (connection: DatabaseConnection) => 
+    ipcRenderer.invoke('connection:update', connection),
+  
+  deleteConnection: (id: string) => 
+    ipcRenderer.invoke('connection:delete', id),
+  
+  getConnectionCount: () => 
+    ipcRenderer.invoke('connection:getCount'),
+  
+  isConnectionActive: (connectionId: string) => 
+    ipcRenderer.invoke('connection:isActive', connectionId),
+  
+  cleanDuplicates: () => 
+    ipcRenderer.invoke('connection:cleanDuplicates'),
+  
   // File operations
   openFile: () => 
     ipcRenderer.invoke('file:open'),
@@ -45,6 +70,14 @@ declare global {
       getSchema: () => Promise<{ success: boolean; schema?: DatabaseSchema; error?: string }>;
       createConnection: (connection: DatabaseConnection) => Promise<{ success: boolean; error?: string }>;
       closeConnection: (connectionId: string) => Promise<{ success: boolean; error?: string }>;
+      saveConnection: (connection: DatabaseConnection) => Promise<{ success: boolean; error?: string }>;
+      loadAllConnections: () => Promise<{ success: boolean; connections?: DatabaseConnection[]; error?: string }>;
+      loadConnectionById: (id: string) => Promise<{ success: boolean; connection?: DatabaseConnection }>;
+      updateConnection: (connection: DatabaseConnection) => Promise<{ success: boolean; error?: string }>;
+      deleteConnection: (id: string) => Promise<{ success: boolean; error?: string }>;
+      getConnectionCount: () => Promise<{ success: boolean; count: number }>;
+      isConnectionActive: (connectionId: string) => Promise<{ success: boolean; isActive: boolean }>;
+      cleanDuplicates: () => Promise<{ success: boolean; error?: string }>;
       openFile: () => Promise<{ success: boolean; content?: string; filePath?: string }>;
       saveFile: (content: string, filePath?: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
     };
