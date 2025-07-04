@@ -185,6 +185,17 @@ const queriesSlice = createSlice({
         if (activeTab) {
           activeTab.loading = false;
           activeTab.error = action.error.message || 'Erro ao executar query';
+          
+          // Adicionar ao histórico mesmo com erro
+          state.history.unshift({
+            id: `history-${Date.now()}`,
+            query: activeTab.query,
+            connectionId: activeTab.connectionId || '',
+            executionTime: 0,
+            timestamp: new Date().toISOString(),
+            success: false,
+            error: action.error.message || 'Erro ao executar query'
+          });
         }
       });
   },

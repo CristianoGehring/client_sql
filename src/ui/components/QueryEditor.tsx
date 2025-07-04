@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
 import { setActiveTab, removeTab, updateTabQuery, executeQuery, addTab, updateTabConnection } from '../store/slices/queriesSlice';
 import { setActiveConnection, createConnection } from '../store/slices/connectionsSlice';
-import { X, Plus, Database } from 'lucide-react';
+import { X, Plus, Database, AlertCircle } from 'lucide-react';
 
 const QueryEditor: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -14,6 +14,7 @@ const QueryEditor: React.FC = () => {
       query: string;
       connectionId: string | null;
       loading: boolean;
+      error?: string;
     }>;
     activeTabId: string | null;
   };
@@ -145,14 +146,27 @@ const QueryEditor: React.FC = () => {
             </div>
             
             {/* Editor de Query */}
-            <textarea
-              value={activeTab.query}
-              onChange={(e) => handleQueryChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Digite sua query SQL aqui... (Ctrl+Enter para executar)"
-              className="flex-1 bg-gray-900 text-gray-100 p-4 font-mono text-sm resize-none outline-none"
-              spellCheck={false}
-            />
+            <div className="flex-1 flex flex-col">
+              <textarea
+                value={activeTab.query}
+                onChange={(e) => handleQueryChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Digite sua query SQL aqui... (Ctrl+Enter para executar)"
+                className="flex-1 bg-gray-900 text-gray-100 p-4 font-mono text-sm resize-none outline-none"
+                spellCheck={false}
+              />
+              
+              {/* Área de erro */}
+              {activeTab.error && (
+                <div className="bg-red-900/20 border-t border-red-500/30 p-3">
+                  <div className="flex items-center space-x-2 text-red-400 mb-2">
+                    <AlertCircle size={16} />
+                    <span className="font-semibold text-sm">Erro</span>
+                  </div>
+                  <p className="text-red-200 text-xs font-mono">{activeTab.error}</p>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500">

@@ -193,10 +193,23 @@ ipcMain.handle('database:execute-query', async (event: IpcMainInvokeEvent, query
   }
 });
 
-ipcMain.handle('database:get-schema', async () => {
+ipcMain.handle('database:get-schema', async (event: IpcMainInvokeEvent, connectionId?: string) => {
   try {
-    // TODO: Implementar gerenciamento de conexões ativas
-    const driver = DatabaseDriverFactory.createDriver(DatabaseType.MYSQL); // Temporário
+    // Se não foi passado connectionId, usar a primeira conexão ativa
+    let targetConnectionId = connectionId;
+    if (!targetConnectionId) {
+      const activeConnectionIds = Array.from(activeConnections.keys());
+      if (activeConnectionIds.length === 0) {
+        throw new Error('Nenhuma conexão ativa encontrada');
+      }
+      targetConnectionId = activeConnectionIds[0];
+    }
+
+    const driver = activeConnections.get(targetConnectionId);
+    if (!driver) {
+      throw new Error(`Conexão ${targetConnectionId} não encontrada ou não está ativa`);
+    }
+
     const schema = await driver.getSchema();
     return { success: true, schema };
   } catch (error) {

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
 import { loadSavedConnections, createConnection, setActiveConnection } from '../store/slices/connectionsSlice';
+import { fetchSchema } from '../store/slices/schemaSlice';
 
 const AppInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const dispatch = useDispatch<AppDispatch>();
@@ -48,6 +49,15 @@ const AppInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) =
           
           // Definir como ativa no frontend
           dispatch(setActiveConnection(firstConnection));
+          
+          // Carregar schema da conexão ativada
+          try {
+            await dispatch(fetchSchema(firstConnection.id));
+            console.log('✅ Schema carregado com sucesso');
+          } catch (error) {
+            console.error('❌ Erro ao carregar schema:', error);
+          }
+          
           console.log('✅ Primeira conexão ativada com sucesso');
         } catch (error) {
           console.error('❌ Erro ao ativar primeira conexão:', error);

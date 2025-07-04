@@ -100,12 +100,19 @@ const ResultsPanel: React.FC = () => {
         )}
 
         {error && (
-          <div className="p-4">
-            <div className="flex items-center space-x-2 text-red-400 mb-2">
-              <AlertCircle size={16} />
-              <span className="font-semibold">Erro</span>
+          <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-lg m-4">
+            <div className="flex items-center space-x-2 text-red-400 mb-3">
+              <AlertCircle size={20} />
+              <span className="font-semibold text-lg">Erro na Execução da Query</span>
             </div>
-            <p className="text-red-300 text-sm">{error}</p>
+            <div className="bg-red-900/30 p-3 rounded border border-red-500/20">
+              <p className="text-red-200 text-sm font-mono whitespace-pre-wrap">{error}</p>
+            </div>
+            <div className="mt-3 text-xs text-red-300">
+              <p>• Verifique se a sintaxe da query está correta</p>
+              <p>• Confirme se a tabela/coluna existe no banco de dados</p>
+              <p>• Verifique se você tem permissões para executar esta query</p>
+            </div>
           </div>
         )}
 

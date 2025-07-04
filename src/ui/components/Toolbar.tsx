@@ -16,6 +16,7 @@ const Toolbar: React.FC = () => {
       query: string;
       connectionId: string | null;
       loading: boolean;
+      error?: string;
     }>;
     loading: boolean;
   };
@@ -102,10 +103,17 @@ const Toolbar: React.FC = () => {
           <button
             onClick={handleExecuteQuery}
             disabled={loading || !activeTab?.query.trim()}
-            className="btn btn-primary flex items-center space-x-2"
+            className={`btn flex items-center space-x-2 ${
+              activeTab?.error 
+                ? 'btn-error' 
+                : 'btn-primary'
+            }`}
           >
             <Play size={16} />
             <span>Executar</span>
+            {activeTab?.error && (
+              <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+            )}
           </button>
 
           <button

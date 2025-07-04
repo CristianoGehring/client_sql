@@ -15,8 +15,8 @@ const initialState: SchemaState = {
 
 export const fetchSchema = createAsyncThunk(
   'schema/fetchSchema',
-  async () => {
-    const result = await window.electronAPI.getSchema();
+  async (connectionId?: string) => {
+    const result = await window.electronAPI.getSchema(connectionId);
     if (!result.success) {
       throw new Error(result.error);
     }
@@ -43,7 +43,7 @@ const schemaSlice = createSlice({
       })
       .addCase(fetchSchema.fulfilled, (state, action) => {
         state.loading = false;
-        state.schema = action.payload;
+        state.schema = action.payload || null;
       })
       .addCase(fetchSchema.rejected, (state, action) => {
         state.loading = false;

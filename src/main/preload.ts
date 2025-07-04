@@ -16,8 +16,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   executeQuery: (query: string, connectionId: string, params?: any[]) => 
     ipcRenderer.invoke('database:execute-query', query, connectionId, params),
   
-  getSchema: () => 
-    ipcRenderer.invoke('database:get-schema'),
+  getSchema: (connectionId?: string) => 
+    ipcRenderer.invoke('database:get-schema', connectionId),
   
   // Connection management
   createConnection: (connection: DatabaseConnection) => 
@@ -67,7 +67,7 @@ declare global {
       connect: (connection: DatabaseConnection) => Promise<{ success: boolean; error?: string }>;
       disconnect: () => Promise<{ success: boolean; error?: string }>;
       executeQuery: (query: string, connectionId: string, params?: any[]) => Promise<{ success: boolean; result?: QueryResult; error?: string }>;
-      getSchema: () => Promise<{ success: boolean; schema?: DatabaseSchema; error?: string }>;
+      getSchema: (connectionId?: string) => Promise<{ success: boolean; schema?: DatabaseSchema; error?: string }>;
       createConnection: (connection: DatabaseConnection) => Promise<{ success: boolean; error?: string }>;
       closeConnection: (connectionId: string) => Promise<{ success: boolean; error?: string }>;
       saveConnection: (connection: DatabaseConnection) => Promise<{ success: boolean; error?: string }>;

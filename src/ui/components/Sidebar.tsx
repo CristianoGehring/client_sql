@@ -3,8 +3,9 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
 import { setActiveConnection, addConnection, testConnection, clearError, createConnection, saveConnectionToDB, deleteConnectionFromDB } from '../store/slices/connectionsSlice';
 import { addTab, updateTabConnection } from '../store/slices/queriesSlice';
+import { fetchSchema } from '../store/slices/schemaSlice';
 import { DatabaseConnection, QueryHistory, DatabaseType } from '@/shared/types';
-import { Database, History, Star, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Database, History, Star, Settings, ChevronLeft, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -49,6 +50,14 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       
       // Definir como ativa no frontend
       dispatch(setActiveConnection(connection));
+      
+      // Carregar schema da conexão ativada
+      try {
+        await dispatch(fetchSchema(connection.id));
+        console.log('✅ Schema carregado com sucesso');
+      } catch (error) {
+        console.error('❌ Erro ao carregar schema:', error);
+      }
       
       // Atualizar a aba ativa se ela não tiver uma conexão definida
       if (activeTab && !activeTab.connectionId) {
@@ -230,10 +239,19 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
               <button
                 key={item.id}
                 onClick={() => handleHistoryClick(item)}
-                className="w-full text-left px-2 py-1 rounded text-sm text-gray-300 hover:bg-gray-700 truncate"
-                title={item.query}
+                className={`w-full text-left px-2 py-1 rounded text-sm hover:bg-gray-700 truncate flex items-center space-x-2 ${
+                  item.success ? 'text-gray-300' : 'text-red-300'
+                }`}
+                title={item.error || `Executado em ${new Date(item.timestamp).toLocaleTimeString()}`}
               >
-                {item.query.substring(0, 30)}...
+                {item.success ? (
+                  <CheckCircle size={12} className="text-green-400 flex-shrink-0" />
+                ) : (
+                  <XCircle size={12} className="text-red-400 flex-shrink-0" />
+                )}
+                <span className="truncate">
+                  {item.query.substring(0, 30)}...
+                </span>
               </button>
             ))}
           </div>

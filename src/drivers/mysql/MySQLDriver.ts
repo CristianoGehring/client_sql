@@ -106,14 +106,7 @@ export class MySQLDriver implements IDatabaseDriver {
         executionTime
       };
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      return {
-        columns: [],
-        rows: [],
-        rowCount: 0,
-        executionTime,
-        error: error instanceof Error ? error.message : 'Erro desconhecido'
-      };
+      throw new Error(error instanceof Error ? error.message : 'Erro desconhecido na execução da query');
     }
   }
 
